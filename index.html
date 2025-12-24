@@ -156,12 +156,12 @@
 
         <div class="w-full mt-4 marquee-container rounded">
             <div class="marquee-content">
-                TAP SCREEN TO LIKE ❤️ --- SHARE THE LIVE 📢 --- COMMENT YOUR TEAM NAME --- GIRLS VS BOYS BATTLE --- SUPPORT YOUR SIDE
+                TAP SCREEN TO LIKE ❤️ --- SHARE THE LIVE 📢 --- COMMENT YOUR TEAM NAME --- BLUE VS PINK BATTLE --- SUPPORT YOUR SIDE
             </div>
         </div>
 
         <div class="mt-4 w-full bg-gray-900 p-3 rounded-lg border-4 border-gray-700">
-            <div class="text-[10px] text-gray-500 mb-2 text-center font-bold tracking-widest uppercase">Controls</div>
+            <div class="text-[10px] text-gray-500 mb-2 text-center font-bold tracking-widest uppercase">Manual Override Controls</div>
             <div class="grid grid-cols-2 gap-4">
                 <button id="btnPink" class="btn-hc flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 text-white py-4 rounded border-pink-900">
                     <img src="public/rose.webp" class="w-6 h-6 object-contain" alt="Rose"> GIRLS
@@ -235,7 +235,41 @@
         let accumulator = 0;
         let startTime = 0;
         let timerInterval = null;
-        let autoRestartTimeout = null; // New variable for auto-restart
+        let autoRestartTimeout = null;
+
+        // --- Wake Lock Variable ---
+        let wakeLock = null;
+
+        // --- Wake Lock Function ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock is active');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                    });
+                }
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release()
+                    .then(() => {
+                        wakeLock = null;
+                    });
+            }
+        }
+
+        // Re-acquire lock when visibility changes
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
 
         // --- Connection Handling ---
         connectBtn.addEventListener('click', () => {
@@ -349,6 +383,9 @@
                 autoRestartTimeout = null;
             }
 
+            // Enable Wake Lock
+            requestWakeLock();
+
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             resizeCanvas();
             const startX = Math.floor(TILE_COUNT_X / 2);
@@ -390,6 +427,7 @@
 
         function gameOver() {
             isGameRunning = false;
+            releaseWakeLock(); // Release lock on game over
             playTone(100, 'sawtooth', 0.4);
             let winnerText = "DRAW";
             if (scores.girls > scores.boys) {
@@ -404,7 +442,7 @@
             actionBtn.innerText = "PLAY AGAIN";
             uiOverlay.classList.remove('opacity-0', 'pointer-events-none');
 
-            // Auto-restart logic: Wait 10 seconds then start
+            // Auto-restart logic
             if (autoRestartTimeout) clearTimeout(autoRestartTimeout);
             autoRestartTimeout = setTimeout(() => {
                 if (!isGameRunning) {
