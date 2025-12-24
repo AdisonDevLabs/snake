@@ -95,7 +95,6 @@
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-center bg-black">
 
-    <!-- CONNECT MODAL -->
     <div id="connectModal" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95">
         <div class="w-full max-w-xs p-6 bg-gray-900 border-4 border-[#fe2c55] rounded-lg text-center shadow-[0_0_30px_rgba(254,44,85,0.3)]">
             <h2 class="text-2xl font-black text-white mb-2 tracking-tighter" style="text-shadow: 2px 2px 0 #fe2c55">TIKTOK LIVE</h2>
@@ -115,19 +114,16 @@
 
     <div class="flex flex-col items-center w-full max-w-lg p-2">
         
-        <!-- LIVE STATS HEADER -->
         <div class="w-full flex justify-between items-center mb-3 px-1">
             <div class="flex items-center bg-gray-900 px-3 py-2 rounded border-2 border-gray-700">
                 <span class="text-xs text-red-500 mr-2 animate-pulse">● LIVE</span>
                 <span id="sessionTimer" class="text-xs text-white tracking-widest">00:00:00</span>
             </div>
-            <!-- WIN REGISTER -->
             <div class="text-xs font-bold border-2 border-gray-600 px-3 py-2 rounded bg-gray-900 text-yellow-400 shadow-md">
                 WINS: <span id="winRegister" class="text-white ml-1">G:0 - B:0</span>
             </div>
         </div>
 
-        <!-- Team Headers -->
         <div class="flex justify-between w-full mb-4 px-1 gap-3">
             <div class="flex flex-col items-center justify-center text-pink-600 score-card p-2 rounded border-pink-600 w-36 shadow-[4px_4px_0_#be185d]">
                 <span class="text-[10px] font-black mb-1">GIRLS</span>
@@ -144,7 +140,6 @@
             </div>
         </div>
 
-        <!-- The Screen -->
         <div id="screenContainer" class="nokia-screen w-full aspect-[4/3] relative overflow-hidden">
             <canvas id="gameCanvas" class="block w-full h-full z-10 relative" style="image-rendering: pixelated;"></canvas>
             
@@ -159,14 +154,12 @@
             </div>
         </div>
 
-        <!-- SCROLLING MARQUEE -->
         <div class="w-full mt-4 marquee-container rounded">
             <div class="marquee-content">
-                TAP SCREEN TO LIKE ❤️ --- SHARE THE LIVE 📢 --- COMMENT YOUR TEAM NAME --- BLUE VS PINK BATTLE --- SUPPORT YOUR SIDE
+                TAP SCREEN TO LIKE ❤️ --- SHARE THE LIVE 📢 --- COMMENT YOUR TEAM NAME --- GIRLS VS BOYS BATTLE --- SUPPORT YOUR SIDE
             </div>
         </div>
 
-        <!-- Manual Controls -->
         <div class="mt-4 w-full bg-gray-900 p-3 rounded-lg border-4 border-gray-700">
             <div class="text-[10px] text-gray-500 mb-2 text-center font-bold tracking-widest uppercase">Manual Override Controls</div>
             <div class="grid grid-cols-2 gap-4">
@@ -179,7 +172,6 @@
             </div>
         </div>
         
-        <!-- Connected Footer -->
         <div id="connectionFooter" class="mt-2 text-[10px] text-gray-600 text-center font-bold hidden">
             CONNECTED TO: <span id="displayUser" class="text-[#25f4ee]"></span>
         </div>
@@ -243,6 +235,7 @@
         let accumulator = 0;
         let startTime = 0;
         let timerInterval = null;
+        let autoRestartTimeout = null; // New variable for auto-restart
 
         // --- Connection Handling ---
         connectBtn.addEventListener('click', () => {
@@ -350,6 +343,12 @@
         }
 
         function initGame() {
+            // Cancel any pending auto-restart if the user clicks manual start
+            if (autoRestartTimeout) {
+                clearTimeout(autoRestartTimeout);
+                autoRestartTimeout = null;
+            }
+
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             resizeCanvas();
             const startX = Math.floor(TILE_COUNT_X / 2);
@@ -404,6 +403,14 @@
             statusText.innerHTML = `GAME OVER<br>${winnerText}<br>G:${scores.girls} - B:${scores.boys}`;
             actionBtn.innerText = "PLAY AGAIN";
             uiOverlay.classList.remove('opacity-0', 'pointer-events-none');
+
+            // Auto-restart logic: Wait 10 seconds then start
+            if (autoRestartTimeout) clearTimeout(autoRestartTimeout);
+            autoRestartTimeout = setTimeout(() => {
+                if (!isGameRunning) {
+                    initGame();
+                }
+            }, 10000);
         }
 
         // --- SMART AI LOGIC ---
