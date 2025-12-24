@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Snake Xenzia Stream Mode</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SnakeLive">
+    <link rel="apple-touch-icon" href="public/icon-192.png">
+    <meta name="theme-color" content="#000000">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000000;
+            color: #fff;
+            touch-action: none;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .nokia-screen {
+            background-color: #a4e638; 
+            border: 8px solid #333; 
+            border-radius: 0px; 
+            position: relative;
+        }
+        
+        .pixel-text { 
+            text-shadow: 3px 3px 0px #000;
+            letter-spacing: 2px;
+        }
+        
+        .chat-log {
+            font-size: 14px;
+            font-weight: 900;
+            opacity: 1; 
+            pointer-events: none;
+            text-transform: uppercase; 
+            text-shadow: 2px 2px 0 #fff;
+        }
+        
+        .btn-hc {
+            border-width: 4px;
+            font-weight: 900;
+            font-size: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.8);
+        }
+        .btn-hc:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.8);
+        }
+
+        /* SCROLLING MARQUEE */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            background: #111;
+            color: #fbbf24;
+            font-size: 16px;
+            padding: 8px 0;
+            border-top: 4px solid #333;
+            border-bottom: 4px solid #333;
+            font-weight: bold;
+        }
+        
+        .marquee-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 15s linear infinite;
+        }
+        
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        .score-card {
+            border-width: 4px;
+            background-color: #fff;
+            color: #000;
+        }
+
+        /* Modal Styles */
+        #connectModal {
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center bg-black">
+
+    <!-- CONNECT MODAL -->
+    <div id="connectModal" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95">
+        <div class="w-full max-w-xs p-6 bg-gray-900 border-4 border-[#fe2c55] rounded-lg text-center shadow-[0_0_30px_rgba(254,44,85,0.3)]">
+            <h2 class="text-2xl font-black text-white mb-2 tracking-tighter" style="text-shadow: 2px 2px 0 #fe2c55">TIKTOK LIVE</h2>
+            <p class="text-[10px] text-gray-400 mb-6 font-bold uppercase tracking-widest">Connect Stream</p>
+            
+            <input type="text" id="usernameInput" placeholder="@USERNAME" 
+                class="w-full bg-black border-4 border-gray-700 text-white p-3 rounded mb-4 font-bold text-center focus:border-[#25f4ee] outline-none placeholder-gray-600 uppercase text-sm"
+            >
+            
+            <button id="connectBtn" class="w-full py-4 bg-[#fe2c55] text-white font-black uppercase rounded text-md active:scale-95 transition-transform shadow-[0_4px_0_#9f1e3a] border-2 border-white/20">
+                CONNECT
+            </button>
+            
+            <div id="connectStatus" class="mt-4 text-[10px] font-bold text-gray-500 h-4 tracking-wider uppercase">READY TO CONNECT</div>
+        </div>
+    </div>
+
+    <div class="flex flex-col items-center w-full max-w-lg p-2">
+        
+        <!-- LIVE STATS HEADER -->
+        <div class="w-full flex justify-between items-center mb-3 px-1">
+            <div class="flex items-center bg-gray-900 px-3 py-2 rounded border-2 border-gray-700">
+                <span class="text-xs text-red-500 mr-2 animate-pulse">● LIVE</span>
+                <span id="sessionTimer" class="text-xs text-white tracking-widest">00:00:00</span>
+            </div>
+            <!-- WIN REGISTER -->
+            <div class="text-xs font-bold border-2 border-gray-600 px-3 py-2 rounded bg-gray-900 text-yellow-400 shadow-md">
+                WINS: <span id="winRegister" class="text-white ml-1">G:0 - B:0</span>
+            </div>
+        </div>
+
+        <!-- Team Headers -->
+        <div class="flex justify-between w-full mb-4 px-1 gap-3">
+            <div class="flex flex-col items-center justify-center text-pink-600 score-card p-2 rounded border-pink-600 w-36 shadow-[4px_4px_0_#be185d]">
+                <span class="text-[10px] font-black mb-1">GIRLS</span>
+                <span id="scoreGirls" class="text-2xl font-black">0</span>
+            </div>
+            
+            <div class="flex flex-col items-center justify-center">
+                <span class="text-white text-xl font-bold italic">VS</span>
+            </div>
+
+            <div class="flex flex-col items-center justify-center text-blue-600 score-card p-2 rounded border-blue-600 w-36 shadow-[4px_4px_0_#1d4ed8]">
+                <span class="text-[10px] font-black mb-1">BOYS</span>
+                <span id="scoreBoys" class="text-2xl font-black">0</span>
+            </div>
+        </div>
+
+        <!-- The Screen -->
+        <div id="screenContainer" class="nokia-screen w-full aspect-[4/3] relative overflow-hidden">
+            <canvas id="gameCanvas" class="block w-full h-full z-10 relative" style="image-rendering: pixelated;"></canvas>
+            
+            <div id="chatLog" class="absolute bottom-2 left-2 z-30 flex flex-col items-start space-y-2 chat-log text-black"></div>
+
+            <div id="uiOverlay" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/85 text-center">
+                <h1 class="text-[#a4e638] text-3xl mb-6 pixel-text">BOYS VS GIRLS</h1>
+                <p id="statusText" class="text-white text-sm mb-8 leading-8 tracking-wide font-bold">WAITING FOR<br>CONNECTION...</p>
+                <button id="actionBtn" class="px-8 py-4 bg-[#a4e638] text-black text-lg font-black rounded border-4 border-black shadow-[6px_6px_0_#fff] active:translate-y-1 active:shadow-none hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    START MATCH
+                </button>
+            </div>
+        </div>
+
+        <!-- SCROLLING MARQUEE -->
+        <div class="w-full mt-4 marquee-container rounded">
+            <div class="marquee-content">
+                TAP SCREEN TO LIKE ❤️ --- SHARE THE LIVE 📢 --- COMMENT YOUR TEAM NAME --- BLUE VS PINK BATTLE --- SUPPORT YOUR SIDE
+            </div>
+        </div>
+
+        <!-- Manual Controls -->
+        <div class="mt-4 w-full bg-gray-900 p-3 rounded-lg border-4 border-gray-700">
+            <div class="text-[10px] text-gray-500 mb-2 text-center font-bold tracking-widest uppercase">Manual Override Controls</div>
+            <div class="grid grid-cols-2 gap-4">
+                <button id="btnPink" class="btn-hc flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 text-white py-4 rounded border-pink-900">
+                    <img src="public/rose.webp" class="w-6 h-6 object-contain" alt="Rose"> GIRLS
+                </button>
+                <button id="btnBlue" class="btn-hc flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded border-blue-900">
+                    <img src="public/tiktok.webp" class="w-6 h-6 object-contain" alt="TikTok"> BOYS
+                </button>
+            </div>
+        </div>
+        
+        <!-- Connected Footer -->
+        <div id="connectionFooter" class="mt-2 text-[10px] text-gray-600 text-center font-bold hidden">
+            CONNECTED TO: <span id="displayUser" class="text-[#25f4ee]"></span>
+        </div>
+    </div>
+
+    <script>
+        // --- PWA Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker Registered'));
+        }
+        // --- Socket.io Setup ---
+        const socket = io();
+
+        // --- Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const uiOverlay = document.getElementById('uiOverlay');
+        const actionBtn = document.getElementById('actionBtn');
+        const statusText = document.getElementById('statusText');
+        const scoreGirlsEl = document.getElementById('scoreGirls');
+        const scoreBoysEl = document.getElementById('scoreBoys');
+        const chatLog = document.getElementById('chatLog');
+        const sessionTimerEl = document.getElementById('sessionTimer');
+        const winRegisterEl = document.getElementById('winRegister');
+        
+        // Modal
+        const connectModal = document.getElementById('connectModal');
+        const connectBtn = document.getElementById('connectBtn');
+        const usernameInput = document.getElementById('usernameInput');
+        const connectStatus = document.getElementById('connectStatus');
+        const connectionFooter = document.getElementById('connectionFooter');
+        const displayUser = document.getElementById('displayUser');
+
+        let audioCtx;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+        } catch(e) { console.warn("AudioContext not supported"); }
+
+        // Config
+        const GRID_SIZE = 20; 
+        let TILE_COUNT_X = 20;
+        let TILE_COUNT_Y = 15;
+        const COLOR_BG = '#a4e638'; 
+        const COLOR_SNAKE = '#000000'; 
+        const COLOR_FOOD_COMMON = '#444444'; 
+        const COLOR_FOOD_GIRLS = '#be185d'; 
+        const COLOR_FOOD_BOYS = '#1e40af';  
+        
+        // Game State
+        let snake = [];
+        let velocity = {x: 1, y: 0};
+        let foods = []; 
+        let scores = { girls: 0, boys: 0 };
+        let matchWins = { girls: 0, boys: 0 };
+        let isGameRunning = false;
+        let gameLoopId = null;
+        let gameSpeed = 150;
+        let lastTime = 0;
+        let accumulator = 0;
+        let startTime = 0;
+        let timerInterval = null;
+
+        // --- Connection Handling ---
+        connectBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (!username) {
+                connectStatus.innerText = "ENTER USERNAME";
+                connectStatus.classList.add('text-red-500');
+                return;
+            }
+            
+            connectStatus.innerText = "CONNECTING...";
+            connectStatus.classList.remove('text-red-500');
+            connectStatus.classList.add('text-yellow-400');
+            connectBtn.disabled = true;
+            connectBtn.classList.add('opacity-50');
+
+            socket.emit('tiktok_connect', username);
+        });
+
+        socket.on('tiktok_connected', (data) => {
+            connectStatus.innerText = "CONNECTED!";
+            connectStatus.classList.remove('text-yellow-400');
+            connectStatus.classList.add('text-green-400');
+            
+            setTimeout(() => {
+                connectModal.style.opacity = '0';
+                setTimeout(() => connectModal.style.display = 'none', 500);
+                
+                statusText.innerHTML = "SYSTEM ONLINE<br>READY TO START";
+                actionBtn.disabled = false;
+                actionBtn.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                
+                displayUser.innerText = data.username;
+                connectionFooter.classList.remove('hidden');
+            }, 500);
+        });
+
+        socket.on('tiktok_error', (msg) => {
+            connectStatus.innerText = msg;
+            connectStatus.classList.add('text-red-500');
+            connectBtn.disabled = false;
+            connectBtn.classList.remove('opacity-50');
+        });
+
+        // --- Game Events from Backend ---
+        socket.on('game_event', (data) => {
+            if (!isGameRunning) return;
+            
+            if (data.type === 'gift') {
+                if (data.team === 'girls') {
+                    spawnFood('pink');
+                    addLog(data.user, 'ROSE 🌹', '#be185d');
+                } else if (data.team === 'boys') {
+                    spawnFood('blue');
+                    addLog(data.user, 'TIKTOK 🎵', '#1d4ed8');
+                }
+            }
+        });
+
+        // --- Manual Overrides ---
+        document.getElementById('btnPink').addEventListener('click', () => {
+            if(!isGameRunning) return;
+            spawnFood('pink');
+            addLog('Streamer', 'MANUAL PINK', '#be185d');
+        });
+        
+        document.getElementById('btnBlue').addEventListener('click', () => {
+            if(!isGameRunning) return;
+            spawnFood('blue');
+            addLog('Streamer', 'MANUAL BLUE', '#1d4ed8');
+        });
+
+        // --- Game Logic ---
+        function playTone(freq, type, duration) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(e => {});
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width || 300;
+            canvas.height = rect.height || 225;
+            TILE_COUNT_X = Math.floor(canvas.width / GRID_SIZE);
+            TILE_COUNT_Y = Math.floor(canvas.height / GRID_SIZE);
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const diff = now - startTime;
+            const hrs = Math.floor(diff / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            sessionTimerEl.innerText = 
+                `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        }
+
+        function initGame() {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            resizeCanvas();
+            const startX = Math.floor(TILE_COUNT_X / 2);
+            const startY = Math.floor(TILE_COUNT_Y / 2);
+            snake = [{x: startX, y: startY}, {x: startX - 1, y: startY}, {x: startX - 2, y: startY}];
+            velocity = {x: 1, y: 0};
+            scores = { girls: 0, boys: 0 };
+            foods = [];
+            spawnFood('common'); 
+            scoreGirlsEl.innerText = 0;
+            scoreBoysEl.innerText = 0;
+            isGameRunning = true;
+            uiOverlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            if (!timerInterval) {
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            lastTime = performance.now();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function spawnFood(type) {
+            let valid = false;
+            let f = {x:0, y:0, type: type};
+            let attempts = 0;
+            while (!valid && attempts < 100) {
+                f.x = Math.floor(Math.random() * TILE_COUNT_X);
+                f.y = Math.floor(Math.random() * TILE_COUNT_Y);
+                const hitSnake = snake.some(s => s.x === f.x && s.y === f.y);
+                const hitFood = foods.some(fd => fd.x === f.x && fd.y === f.y);
+                valid = !hitSnake && !hitFood;
+                attempts++;
+            }
+            if(valid) foods.push(f);
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            playTone(100, 'sawtooth', 0.4);
+            let winnerText = "DRAW";
+            if (scores.girls > scores.boys) {
+                winnerText = "GIRLS WIN";
+                matchWins.girls++;
+            } else if (scores.boys > scores.girls) {
+                winnerText = "BOYS WIN";
+                matchWins.boys++;
+            }
+            winRegisterEl.innerText = `G:${matchWins.girls} - B:${matchWins.boys}`;
+            statusText.innerHTML = `GAME OVER<br>${winnerText}<br>G:${scores.girls} - B:${scores.boys}`;
+            actionBtn.innerText = "PLAY AGAIN";
+            uiOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        // --- SMART AI LOGIC ---
+        
+        function getSafeMoves(head) {
+            const moves = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+            return moves.filter(move => {
+                const nx = head.x + move.x;
+                const ny = head.y + move.y;
+                return nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y && !snake.some(s => s.x === nx && s.y === ny);
+            });
+        }
+
+        function countReachable(startX, startY) {
+            const q = [{x: startX, y: startY}];
+            const visited = new Set();
+            visited.add(`${startX},${startY}`);
+            const obstacles = new Set(snake.map(p => `${p.x},${p.y}`));
+            let count = 0;
+            const limit = snake.length * 2; 
+
+            while(q.length > 0 && count < limit) {
+                const curr = q.shift();
+                count++;
+                const dirs = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+                for(let dir of dirs) {
+                    const nx = curr.x + dir.x;
+                    const ny = curr.y + dir.y;
+                    const key = `${nx},${ny}`;
+                    if (nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y && !visited.has(key) && !obstacles.has(key)) {
+                        visited.add(key);
+                        q.push({x: nx, y: ny});
+                    }
+                }
+            }
+            return count;
+        }
+
+        function getAIMove() {
+            if (snake.length === 0) return null;
+            const head = snake[0];
+            const safeMoves = getSafeMoves(head);
+
+            if (safeMoves.length === 0) return null;
+
+            let target = null;
+            const specialFoods = foods.filter(f => f.type === 'pink' || f.type === 'blue');
+            const candidates = specialFoods.length > 0 ? specialFoods : foods;
+            let minDist = Infinity;
+            if (candidates.length > 0) {
+                candidates.forEach(f => {
+                    const d = Math.abs(head.x - f.x) + Math.abs(head.y - f.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        target = f;
+                    }
+                });
+            }
+
+            let bestMove = null;
+            if (target) {
+                const q = [{x: head.x, y: head.y, path: []}];
+                const visited = new Set();
+                visited.add(`${head.x},${head.y}`);
+                const obstacles = new Set(snake.map(p => `${p.x},${p.y}`));
+                let foundPath = null;
+                let iterations = 0;
+                
+                while(q.length > 0 && iterations < 500) {
+                    const curr = q.shift();
+                    iterations++;
+                    if (curr.x === target.x && curr.y === target.y) {
+                        foundPath = curr.path;
+                        break;
+                    }
+                    const dirs = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+                    for(let dir of dirs) {
+                        const nx = curr.x + dir.x;
+                        const ny = curr.y + dir.y;
+                        const key = `${nx},${ny}`;
+                        if (nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y && !visited.has(key) && !obstacles.has(key)) {
+                            visited.add(key);
+                            const newPath = curr.path.length === 0 ? [dir] : curr.path; 
+                            q.push({x: nx, y: ny, path: newPath});
+                        }
+                    }
+                }
+
+                if (foundPath && foundPath.length > 0) {
+                    const potentialMove = foundPath[0];
+                    const nextX = head.x + potentialMove.x;
+                    const nextY = head.y + potentialMove.y;
+                    const space = countReachable(nextX, nextY);
+                    if (space >= Math.min(snake.length, 50)) {
+                        bestMove = potentialMove;
+                    }
+                }
+            }
+
+            if (!bestMove) {
+                let maxSpace = -1;
+                for (let move of safeMoves) {
+                    const nx = head.x + move.x;
+                    const ny = head.y + move.y;
+                    const space = countReachable(nx, ny);
+                    if (space > maxSpace) {
+                        maxSpace = space;
+                        bestMove = move;
+                    }
+                }
+            }
+
+            return bestMove || safeMoves[0]; 
+        }
+
+        function update() {
+            const aiMove = getAIMove();
+            if (aiMove) velocity = aiMove;
+            const head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
+            
+            if (head.x < 0 || head.x >= TILE_COUNT_X || head.y < 0 || head.y >= TILE_COUNT_Y || snake.some(s => s.x === head.x && s.y === head.y)) { 
+                gameOver(); return; 
+            }
+            
+            snake.unshift(head);
+            const foodIdx = foods.findIndex(f => f.x === head.x && f.y === head.y);
+            if (foodIdx !== -1) {
+                const food = foods[foodIdx];
+                playTone(600, 'square', 0.1);
+                if (food.type === 'pink') scores.girls += 50;
+                else if (food.type === 'blue') scores.boys += 50;
+                foods.splice(foodIdx, 1);
+                if(foods.length === 0) spawnFood('common');
+            } else {
+                snake.pop(); 
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = COLOR_BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const w = canvas.width / TILE_COUNT_X;
+            const h = canvas.height / TILE_COUNT_Y;
+
+            ctx.fillStyle = COLOR_SNAKE;
+            snake.forEach((p, i) => {
+                ctx.fillRect(p.x * w + 1, p.y * h + 1, w - 2, h - 2); 
+            });
+
+            foods.forEach(f => {
+                let radius = (Math.min(w, h) / 2) * 0.7; // Default size
+                if (f.type === 'pink') {
+                    ctx.fillStyle = COLOR_FOOD_GIRLS;
+                    radius = (Math.min(w, h) / 2) * 1.3; // Bigger gift food
+                } else if (f.type === 'blue') {
+                    ctx.fillStyle = COLOR_FOOD_BOYS;
+                    radius = (Math.min(w, h) / 2) * 1.3; // Bigger gift food
+                } else {
+                    ctx.fillStyle = COLOR_FOOD_COMMON;
+                }
+                
+                const centerX = f.x * w + w / 2;
+                const centerY = f.y * h + h / 2;
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            scoreGirlsEl.innerText = scores.girls;
+            scoreBoysEl.innerText = scores.boys;
+        }
+
+        function gameLoop(timestamp) {
+            if (!isGameRunning) return;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+            accumulator += dt;
+            if (accumulator > gameSpeed * 3) accumulator = gameSpeed;
+            if (accumulator >= gameSpeed) { update(); accumulator = 0; }
+            draw();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function addLog(user, msg, color) {
+            const el = document.createElement('div');
+            el.innerHTML = `<span style="color:${color};font-weight:900">${user}:</span> ${msg}`;
+            chatLog.appendChild(el);
+            if(chatLog.children.length > 3) chatLog.removeChild(chatLog.firstChild);
+            setTimeout(() => el.remove(), 2000);
+        }
+
+        actionBtn.addEventListener('click', initGame);
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        draw();
+    </script>
+</body>
+</html>
