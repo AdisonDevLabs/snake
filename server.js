@@ -3,10 +3,34 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { WebcastPushConnection } = require('tiktok-live-connector');
 const path = require('path');
+const { Pool } = require('pg'); // Import PostgreSQL client
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// --- DATABASE CONFIGURATION ---
+// Replace this connection string with your actual Neon DB string
+const NEON_DB_CONNECTION_STRING = process.env.DATABASE_URL;
+
+const pool = new Pool({
+    connectionString: NEON_DB_CONNECTION_STRING,
+    ssl: {
+        rejectUnauthorized: false // Required for Neon
+    }
+});
+
+// Initialize DB Table
+pool.query(`
+    CREATE TABLE IF NOT EXISTS tiktok_users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        is_paid BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`).catch(err => console.error('Error creating table', err));
+
 
 // Serve the index.html file
 app.use(express.static(__dirname));
@@ -22,9 +46,7 @@ io.on('connection', (socket) => {
     console.log('Frontend connected:', socket.id);
 
     // Frontend requests to connect
-    // We now expect 'data' to be an Object: { username, teamAGift, teamBGift }
-    // But we maintain support for just a string (username) for backward compatibility
-    socket.on('tiktok_connect', (data) => {
+    socket.on('tiktok_connect', async (data) => { // Made async for DB calls
         
         let uniqueId;
         let gameConfig = {
@@ -49,6 +71,43 @@ io.on('connection', (socket) => {
         }
 
         console.log(`Config: @${uniqueId}`);
+
+        // --- DATABASE CHECK LOGIC ---
+        try {
+            // Check if user exists
+            const userCheck = await pool.query('SELECT * FROM tiktok_users WHERE username = $1', [uniqueId]);
+
+            if (userCheck.rows.length > 0) {
+                // User Exists - Check Payment Status
+                const user = userCheck.rows[0];
+                console.log(`User @${uniqueId} found. Paid status: ${user.is_paid}`);
+
+                // If you want to BLOCK unpaid users, uncomment the lines below:
+                /*
+                if (!user.is_paid) {
+                    socket.emit('tiktok_error', 'ACCOUNT NOT PAID. PLEASE UPGRADE.');
+                    return; // Stop execution
+                }
+                */
+
+                // Update last login
+                await pool.query('UPDATE tiktok_users SET last_login = CURRENT_TIMESTAMP WHERE username = $1', [uniqueId]);
+                
+            } else {
+                // User Does Not Exist - Register Them
+                console.log(`User @${uniqueId} not found. Registering...`);
+                await pool.query(
+                    'INSERT INTO tiktok_users (username, is_paid) VALUES ($1, $2)',
+                    [uniqueId, false] // Default to NOT paid
+                );
+                // Note: If you want to block new users until they pay, emit error here and return.
+            }
+        } catch (err) {
+            console.error('Database Error:', err);
+            // Optionally emit an error or allow play in "offline mode" if DB fails
+            // socket.emit('tiktok_error', 'DATABASE ERROR'); 
+        }
+
         console.log(`A: ${gameConfig.teamA} (Boost: ${gameConfig.teamABoost})`);
         console.log(`B: ${gameConfig.teamB} (Boost: ${gameConfig.teamBBoost})`);
 
