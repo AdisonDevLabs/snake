@@ -109,3 +109,115 @@ body {
 @media(min-width: 768px) {
     .score-card { border-width: 4px; }
 }
+
+/* === LANDSCAPE / FULLSCREEN MODE === */
+@media screen and (orientation: landscape) and (max-width: 900px) {
+    /* 1. Reset Body Alignment */
+    body {
+        justify-content: center !important;
+        align-items: center !important;
+        background-color: #000;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* 2. Force Game Container to Fill Screen */
+    #gameContainer {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        z-index: 9999;
+        background: #000;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: row; /* Side-by-side layout */
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 3. Adjust Game Screen (Canvas) */
+    #screenWrapper {
+        width: auto !important;
+        height: 100vh !important; /* Full Height */
+        max-height: 100vh !important;
+        aspect-ratio: 4/3;
+        border: none !important; /* Remove borders to save space */
+        box-shadow: none !important;
+        margin: 0 auto;
+    }
+
+    /* 4. Reposition/Hide UI Elements for Clean Look */
+    /* Hide Header Timer & Footer Connection Text */
+    #gameContainer > div:first-child, /* Timer Row */
+    #connectionFooter, 
+    .marquee-container {
+        display: none !important; 
+    }
+
+    /* 5. Floating Scoreboards (Top Left & Top Right) */
+    #cardTeamA {
+        position: absolute;
+        top: 10px;
+        left: 20px;
+        z-index: 50;
+        width: 150px !important;
+        opacity: 0.8;
+        transform: scale(0.8);
+        transform-origin: top left;
+    }
+    #cardTeamB {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        z-index: 50;
+        width: 150px !important;
+        opacity: 0.8;
+        transform: scale(0.8);
+        transform-origin: top right;
+    }
+    /* Hide the "VS" text in landscape */
+    .flex-col.shrink-0 { display: none !important; }
+
+    /* 6. Hide Manual Controls Wrapper (The grey box below game) */
+    #gameContainer > div.bg-gray-900.border-4 {
+        display: none !important;
+    }
+
+    /* 7. D-PAD OVERLAY (Transparent on sides) */
+    #mobileControls {
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        pointer-events: none;
+        padding: 0 !important;
+        display: flex !important; /* Ensure it shows if manual mode */
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+    }
+    
+    /* Modify D-Pad Container to Split Controls */
+    #mobileControls > div {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+    }
+
+    /* Reposition Buttons for Two-Hand Play */
+    /* Left Side: Left/Right/Down/Up cluster logic requires JS structure change. 
+       Easier Fix: Just make the current pad semi-transparent in corner */
+    #mobileControls > div {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.5) !important;
+    }
+}
