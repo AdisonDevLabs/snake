@@ -167,7 +167,7 @@ if(fullscreenBtn) {
             
             // Optional: Lock orientation to landscape if supported
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(e => console.log('Orientation lock not supported'));
+                screen.orientation.lock('portrait').catch(e => console.log('Orientation lock not supported'));
             }
         } else {
             if (document.exitFullscreen) document.exitFullscreen();
@@ -696,7 +696,7 @@ function initGame() {
         timerInterval = setInterval(updateTimer, 1000);
     }
 
-    // [UPDATED] Start the Bot Logic
+    // [UPDATED] Start the Bot Logic landscape
     runFakeBotLogic();
 
     if (gameLoopId) cancelAnimationFrame(gameLoopId);
