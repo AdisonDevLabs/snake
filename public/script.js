@@ -211,6 +211,17 @@ let startTime = 0;
 let timerInterval = null;
 let autoRestartTimeout = null;
 
+// [NEW] Fake Bot Variables
+let fakeBotInterval = null;
+const FAKE_TARGET_SCORE = 1000; // Score to reach before slowing down
+const FAKE_MAX_GAMES = 5;       // Stop auto-play after 5 total games (e.g. 3-2)
+
+// [NEW] Realistic Usernames Pool
+const FAKE_USERNAMES = [
+    "Gaming_King_x", "Sarah_", "Shadow_Hunter", "Moba_Master", 
+    "Cute_Panda_99", "Dragon_Slayer", "Pro_Gamer_24", "Chill_Vibes"
+];
+
 let audioCtx;
 try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -566,6 +577,79 @@ function updateTimer() {
         `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
 }
 
+
+// [NEW] Function to manage Auto-Play Bot behavior
+function runFakeBotLogic() {
+    // Clear any existing timer to prevent overlaps
+    if (fakeBotInterval) clearTimeout(fakeBotInterval);
+
+    // Stop if we reached max games
+    if ((matchWins.teamA + matchWins.teamB) >= FAKE_MAX_GAMES) return;
+
+    const botLoop = () => {
+        // If paused, wait 1 second and check again
+        if (!isGameRunning || isPaused) {
+            fakeBotInterval = setTimeout(botLoop, 1000);
+            return;
+        }
+
+        // Stop naturally if score target reached
+        if (scores.teamA >= FAKE_TARGET_SCORE || scores.teamB >= FAKE_TARGET_SCORE) {
+            return;
+        }
+
+        // --- 1. DECIDE TEAM (War Logic) ---
+        let targetTeam = '';
+        if (scores.teamA < scores.teamB - 150) targetTeam = 'teamA'; // Help A
+        else if (scores.teamB < scores.teamA - 150) targetTeam = 'teamB'; // Help B
+        else targetTeam = Math.random() > 0.5 ? 'teamA' : 'teamB'; // Random
+
+        // --- 2. PICK A USER ---
+        const randomUser = FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)];
+        
+        // --- 3. DETERMINE BURST (1 to 4 gifts) ---
+        let burstCount = 1;
+        if (Math.random() > 0.6) {
+            burstCount = Math.floor(Math.random() * 3) + 2; // 2 to 4 gifts
+        }
+
+        let giftsSent = 0;
+
+        // Inner function to handle the rapid burst
+        const sendBurst = () => {
+            if (giftsSent >= burstCount) {
+                // Burst finished. Schedule next MAJOR user action.
+                const nextDelay = Math.random() * 4000 + 1000;
+                fakeBotInterval = setTimeout(botLoop, nextDelay);
+                return;
+            }
+
+            // --- SEND GIFT & LOG WITH ICON ---
+            spawnFood(targetTeam);
+
+            const isTeamA = targetTeam === 'teamA';
+            const color = isTeamA ? AppConfig.teamA.color : AppConfig.teamB.color;
+            // Get the correct image path from the config
+            const imgPath = isTeamA ? AppConfig.teamA.giftImg : AppConfig.teamB.giftImg;
+
+            // Updated Log: Pass "Gift" as text and imgPath as the 4th argument
+            // Result: "User: [Icon] Gift"
+            addLog(randomUser, "Gift", color, imgPath);
+            
+            giftsSent++;
+
+            // Short delay between gifts in a burst
+            fakeBotInterval = setTimeout(sendBurst, Math.random() * 300 + 100);
+        };
+
+        // Start the burst
+        sendBurst();
+    };
+
+    // Trigger the first loop
+    botLoop();
+}
+
 function initGame() {
     if (!isConnected) {
         statusText.innerHTML = "CANNOT START<br>NO CONNECTION";
@@ -573,6 +657,10 @@ function initGame() {
         setTimeout(() => statusText.innerHTML = "WAITING FOR<br>CONNECTION...", 2000);
         return;
     }
+
+    // [UPDATED] Clear previous bot interval and speech
+    if (fakeBotInterval) clearTimeout(fakeBotInterval);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     if (autoRestartTimeout) {
         clearTimeout(autoRestartTimeout);
@@ -607,6 +695,9 @@ function initGame() {
         startTime = Date.now();
         timerInterval = setInterval(updateTimer, 1000);
     }
+
+    // [UPDATED] Start the Bot Logic
+    runFakeBotLogic();
 
     if (gameLoopId) cancelAnimationFrame(gameLoopId);
     lastTime = performance.now();
@@ -722,6 +813,9 @@ function gameLoop(timestamp) {
 
 function gameOver() {
     isGameRunning = false;
+
+    if (fakeBotInterval) clearTimeout(fakeBotInterval);
+
     releaseWakeLock();
     playTone(100, 'sawtooth', 0.4);
     
