@@ -443,32 +443,6 @@ function stopGameDueToDisconnect() {
     actionBtn.disabled = true;
 }
 
-// ============================================
-// 5. TEXT TO SPEECH HELPER
-// ============================================
-function speakText(text) {
-    // Check if browser supports speech
-    if ('speechSynthesis' in window) {
-        // Cancel if the queue is too long (optional, prevents lagging 5 minutes behind)
-        if (window.speechSynthesis.pending && window.speechSynthesis.speak.length > 5) {
-            window.speechSynthesis.cancel(); 
-        }
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Config: Adjust these if you want a different voice style
-        utterance.pitch = 1.1; // Slightly higher pitch for excitement
-        utterance.rate = 1.2;  // Slightly faster speed
-        utterance.volume = 1.0; 
-
-        // Optional: Pick a specific English voice if available
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang.includes('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-
-        window.speechSynthesis.speak(utterance);
-    }
-}
 
 socket.on('game_event', (data) => {
     if (!isGameRunning || isPaused) return; 
@@ -476,12 +450,6 @@ socket.on('game_event', (data) => {
     if (data.type === 'gift') {
         const isBoost = data.isBoost;
         
-        // 1. GENERATE TTS MESSAGE
-        const cleanGiftName = data.gift.replace(/_/g, ' ');
-        const ttsMessage = `Thank you ${data.user} for the ${cleanGiftName}`;
-
-        speakText(ttsMessage);
-
         if (data.team === 'girls') {
             spawnFood('teamA', isBoost);
             const imgPath = isBoost ? AppConfig.teamA.boostImg : AppConfig.teamA.giftImg;
@@ -589,11 +557,6 @@ function initGame() {
         return;
     }
 
-    // NEW: Stop speaking previous messages when a new game st
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    
     if (autoRestartTimeout) {
         clearTimeout(autoRestartTimeout);
         autoRestartTimeout = null;
