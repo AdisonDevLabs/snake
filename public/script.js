@@ -494,7 +494,7 @@ function handleManualMove(dx, dy) {
     }
 }
 
-// Touch Events for D-Pad (Prevent Default to stop scrolling)
+// Touch mobile Events for D-Pad (Prevent Default to stop scrolling)
 function setupDpadButton(btn, dx, dy) {
     const handler = (e) => {
         if(e.cancelable) e.preventDefault();
@@ -844,7 +844,7 @@ function getAIMove() {
 // Helpers
 function addLog(user, msg, color, iconPath = null) {
     const el = document.createElement('div');
-    el.className = "flex items-center gap-1"; // Use flex for alignment
+    el.className = "flex items-center gap-1"; // Use flex for alignment pad
     
     let iconHtml = '';
     if (iconPath) {
