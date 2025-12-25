@@ -1,0 +1,22 @@
+const TIKTOK_GIFTS = [
+    { id: 1, name: "Rose", icon: "🌹" },
+    { id: 2, name: "TikTok", icon: "🎵" },
+    { id: 3, name: "Finger Heart", icon: "🫶" },
+    { id: 4, name: "Ice Cream", icon: "🍦" },
+    { id: 5, name: "GG", icon: "🎮" },
+    { id: 6, name: "Weights", icon: "🏋️" },
+    { id: 7, name: "Panda", icon: "🐼" },
+    { id: 8, name: "Swan", icon: "🦢" },
+    { id: 9, name: "Galaxy", icon: "🌌" },
+    { id: 10, name: "Money Gun", icon: "🔫" },
+    { id: 11, name: "Train", icon: "🚂" },
+    { id: 12, name: "Cap", icon: "🧢" },
+    { id: 13, name: "Pizza", icon: "🍕" },
+    { id: 14, name: "Cowboy Hat", icon: "🤠" },
+    { id: 15, name: "Donut", icon: "🍩" },
+    { id: 16, name: "Love Balloon", icon: "🎈" },
+    { id: 17, name: "Mini Speaker", icon: "🔊" },
+    { id: 18, name: "Chocolate", icon: "🍫" },
+    { id: 19, name: "Pearl", icon: "🦪" },
+    { id: 20, name: "Tea", icon: "🍵" }
+];

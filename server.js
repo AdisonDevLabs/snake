@@ -11,34 +11,67 @@ const io = new Server(server);
 // Serve the index.html file
 app.use(express.static(__dirname));
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, "public", 'index.html'));
 });
 
-// Map of active TikTok connections
-const tiktokConnections = new Map();
+// Map of active TikTok connections & their game config
+// Structure: socket.id => { connection: WebcastPushConnection, config: { teamA: 'rose', teamB: 'tiktok' } }
+const activeSessions = new Map();
 
 io.on('connection', (socket) => {
     console.log('Frontend connected:', socket.id);
 
-    // Frontend requests to connect to a specific TikTok username
-    socket.on('tiktok_connect', (username) => {
-        // Clean username
-        const uniqueId = username.replace('@', '');
-        console.log(`Attempting to connect to TikTok Live: @${uniqueId}`);
+    // Frontend requests to connect
+    // We now expect 'data' to be an Object: { username, teamAGift, teamBGift }
+    // But we maintain support for just a string (username) for backward compatibility
+    socket.on('tiktok_connect', (data) => {
+        
+        let uniqueId;
+        let gameConfig = {
+            teamA: 'rose',    // Default
+            teamB: 'tiktok',
+            teamABoost: 'money gun',
+            teamBBoost: 'galaxy'
+        };
 
-        // Prevent duplicate connections for the same socket
-        if (tiktokConnections.has(socket.id)) {
-            tiktokConnections.get(socket.id).disconnect();
+        // 1. Parse incoming data (String vs Object)
+        if (typeof data === 'object' && data !== null) {
+            uniqueId = data.username.replace('@', '');
+            // Store the chosen gift names (lowercase for easy matching)
+            if (data.teamAGift) gameConfig.teamA = data.teamAGift.toLowerCase();
+            if (data.teamBGift) gameConfig.teamB = data.teamBGift.toLowerCase();
+
+            if (data.teamABoost) gameConfig.teamABoost = data.teamABoost.toLowerCase();
+            if (data.teamBBoost) gameConfig.teamBBoost = data.teamBBoost.toLowerCase();
+        } else {
+            // Legacy mode (just string)
+            uniqueId = data.toString().replace('@', '');
         }
 
-        // Create new TikTok connection
+        console.log(`Config: @${uniqueId}`);
+        console.log(`A: ${gameConfig.teamA} (Boost: ${gameConfig.teamABoost})`);
+        console.log(`B: ${gameConfig.teamB} (Boost: ${gameConfig.teamBBoost})`);
+
+        // 2. Cleanup existing session for this socket
+        if (activeSessions.has(socket.id)) {
+            const session = activeSessions.get(socket.id);
+            if (session.connection) session.connection.disconnect();
+            activeSessions.delete(socket.id);
+        }
+
+        // 3. Create new TikTok connection
         const tiktokLiveConnection = new WebcastPushConnection(uniqueId);
 
         tiktokLiveConnection.connect()
             .then(state => {
                 console.log(`Connected to RoomId: ${state.roomId}`);
                 socket.emit('tiktok_connected', { username: uniqueId });
-                tiktokConnections.set(socket.id, tiktokLiveConnection);
+                
+                // Store connection AND the specific gifts for this session
+                activeSessions.set(socket.id, {
+                    connection: tiktokLiveConnection,
+                    config: gameConfig
+                });
             })
             .catch(err => {
                 console.error('Failed to connect', err);
@@ -47,59 +80,82 @@ io.on('connection', (socket) => {
 
         // --- Event Listeners ---
 
-        // Gifts
         tiktokLiveConnection.on('gift', (data) => {
-            // Note: Gift IDs change. It's safer to check names or diamond cost.
-            // Rose ID: 5655 (usually)
-            // TikTok ID: 5269 (usually)
-            
+            // Retrieve the config for this specific socket
+            const session = activeSessions.get(socket.id);
+            if (!session) return;
+
+            const targetGiftName = data.giftName.toLowerCase();
             const giftId = data.giftId;
-            const giftName = data.giftName.toLowerCase();
-            
-            // LOGIC: Map Gifts to Game Teams
-            if (giftName.includes('rose') || giftId === 5655) {
-                // Girls Team (Pink)
+            const repeatCount = data.repeatCount || 1; // Assuming 1 if undefined
+
+            // --- TEAM A LOGIC ---
+            if (targetGiftName.includes(session.config.teamABoost)) {
+                // TEAM A SUPER BOOST
                 io.to(socket.id).emit('game_event', {
                     type: 'gift',
                     team: 'girls',
+                    isBoost: true, // <--- FLAG
                     user: data.uniqueId,
-                    gift: 'Rose'
+                    gift: data.giftName,
+                    count: repeatCount
                 });
-            } else if (giftName.includes('tiktok') || giftId === 5269) {
-                // Boys Team (Blue)
+            }
+            else if (targetGiftName.includes(session.config.teamA)) {
+                // TEAM A NORMAL
+                io.to(socket.id).emit('game_event', {
+                    type: 'gift',
+                    team: 'girls',
+                    isBoost: false,
+                    user: data.uniqueId,
+                    gift: data.giftName,
+                    count: repeatCount
+                });
+            }
+            // --- TEAM B LOGIC ---
+            else if (targetGiftName.includes(session.config.teamBBoost)) {
+                // TEAM B SUPER BOOST
                 io.to(socket.id).emit('game_event', {
                     type: 'gift',
                     team: 'boys',
+                    isBoost: true, // <--- FLAG
                     user: data.uniqueId,
-                    gift: 'TikTok'
+                    gift: data.giftName,
+                    count: repeatCount
                 });
-            } else {
-                // Optional: Handle other gifts as generic boosts
-                console.log(`Unhandled Gift: ${giftName} (${giftId})`);
             }
+            else if (targetGiftName.includes(session.config.teamB)) {
+                // TEAM B NORMAL
+                io.to(socket.id).emit('game_event', {
+                    type: 'gift',
+                    team: 'boys',
+                    isBoost: false,
+                    user: data.uniqueId,
+                    gift: data.giftName,
+                    count: repeatCount
+                });
+            }
+
+            console.log(`Gift received: ${targetGiftName} (x${repeatCount})`);
         });
 
-        // Likes (Optional: make snake faster?)
-        tiktokLiveConnection.on('like', (data) => {
-            // io.to(socket.id).emit('game_event', { type: 'like', count: data.likeCount });
-        });
-
-        // Chat (Optional: Manual controls via chat?)
-        tiktokLiveConnection.on('chat', (data) => {
-            // console.log(`${data.uniqueId}: ${data.comment}`);
-        });
-        
-        // Handle Disconnect
+        // Handle Stream End
         tiktokLiveConnection.on('streamEnd', () => {
             socket.emit('tiktok_error', 'STREAM ENDED');
+        });
+        
+        // Optional: Chat/Like handlers
+        tiktokLiveConnection.on('chat', (data) => {
+            // console.log(`${data.uniqueId}: ${data.comment}`);
         });
     });
 
     // Cleanup on disconnect
     socket.on('disconnect', () => {
-        if (tiktokConnections.has(socket.id)) {
-            tiktokConnections.get(socket.id).disconnect();
-            tiktokConnections.delete(socket.id);
+        if (activeSessions.has(socket.id)) {
+            const session = activeSessions.get(socket.id);
+            if (session.connection) session.connection.disconnect();
+            activeSessions.delete(socket.id);
         }
         console.log('Frontend disconnected');
     });
