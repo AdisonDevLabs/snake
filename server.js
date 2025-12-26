@@ -74,7 +74,7 @@ io.on('connection', (socket) => {
 
         // --- DATABASE CHECK LOGIC ---
         const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-        const THIRTY_MINS_MS = 30 * 60 * 1000;
+        const THIRTY_MINS_MS = 3 * 60 * 1000;
         let sessionLimit = THIRTY_MINS_MS;
         try {
             // Check if user exists
