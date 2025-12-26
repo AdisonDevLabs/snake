@@ -92,13 +92,14 @@
 
     <div id="gameContainer" class="flex flex-col items-center pt-24 w-full max-w-lg p-2 md:p-4 hidden relative h-full justify-start">
         
-        <div class="w-full flex justify-between items-center mb-2 px-1 gap-2">
+        <div class="w-full flex justify-between items-center mb-2 px-1 gap-1">
             <div class="flex items-center bg-gray-900 px-2 py-1 md:px-3 md:py-2 rounded border-2 border-gray-700 shrink-0">
-                <span class="text-[15px] md:text-xs text-red-500 mr-2 animate-pulse">● LIVE</span>
+                <span class="text-[15px] md:text-xs text-red-500 mr-1 animate-pulse">● LIVE</span>
                 <span id="sessionTimer" class="text-[15px] md:text-xs text-white tracking-widest">00:00:00</span>
             </div>
-            <div class="text-[12px] md:text-xs font-bold border-2 border-gray-600 px-2 py-1 md:px-3 md:py-2 rounded bg-gray-900 text-yellow-400 shadow-md whitespace-nowrap overflow-hidden text-ellipsis">
-                WINS: <span id="winRegister" class="text-white ml-1">A:0 - B:0</span>
+            <div class="flex flex-col md:flex-row items-center justify-center text-[10px] md:text-xs font-bold border-2 border-gray-600 px-2 py-1 md:px-3 md:py-2 rounded bg-gray-900 text-yellow-400 shadow-md leading-tight">
+                <span class="mb-0.5 md:mb-0 md:mr-1">WINS:</span>
+                <span id="winRegister" class="text-white">A:0 - B:0</span>
             </div>
         </div>
         <div class="flex justify-between w-full mb-3 md:mb-4 px-1 gap-2 md:gap-4">
