@@ -73,8 +73,8 @@ io.on('connection', (socket) => {
         console.log(`Config: @${uniqueId}`);
 
         // --- DATABASE CHECK LOGIC ---
-        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-        const THIRTY_MINS_MS = 3 * 60 * 1000;
+        const TWO_HOURS_MS = 4 * 60 * 60 * 1000;
+        const THIRTY_MINS_MS = 1 * 60 * 60 * 1000;
         let sessionLimit = THIRTY_MINS_MS;
         try {
             // Check if user exists
