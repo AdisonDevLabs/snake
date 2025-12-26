@@ -500,19 +500,33 @@ socket.on('game_event', (data) => {
     }
 });
 
-// ============================================
+// // ============================================
 // CONTROLS
 // ============================================
 
 btnTeamA.addEventListener('click', () => {
     if(!isGameRunning || isPaused) return;
+    
     spawnFood('teamA');
-    addLog('Manual', AppConfig.teamA.name, AppConfig.teamA.color);
+    
+    // 1. Pick a random user from your list
+    const randomUser = FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)];
+    
+    // 2. Log with the correct Image Icon and Color
+    // Usage: addLog(Username, Message, Color, ImagePath)
+    addLog(randomUser, "Gift", AppConfig.teamA.color, AppConfig.teamA.giftImg);
 });
+
 btnTeamB.addEventListener('click', () => {
     if(!isGameRunning || isPaused) return;
+    
     spawnFood('teamB');
-    addLog('Manual', AppConfig.teamB.name, AppConfig.teamB.color);
+    
+    // 1. Pick a random user
+    const randomUser = FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)];
+    
+    // 2. Log with the correct Image Icon and Color
+    addLog(randomUser, "Gift", AppConfig.teamB.color, AppConfig.teamB.giftImg);
 });
 
 function handleManualMove(dx, dy) {
@@ -555,7 +569,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================
-// GAME LOGIC
+// GAME LOGIC manual
 // ============================================
 
 function resizeCanvas() {

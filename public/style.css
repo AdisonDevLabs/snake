@@ -72,10 +72,6 @@ body {
     text-transform: uppercase;
     background-color: #333; 
 }
-.btn-hc:active {
-    border-width: 0;
-    transform: translateY(4px);
-}
 
 /* SCROLLING MARQUEE */
 .marquee-container {
